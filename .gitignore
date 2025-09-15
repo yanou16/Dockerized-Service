@@ -1,0 +1,8 @@
+# À la racine du projet
+echo "# Terraform files" >> .gitignore
+echo "**/.terraform/*" >> .gitignore
+echo "*.tfstate" >> .gitignore
+echo "*.tfstate.*" >> .gitignore
+echo "crash.log" >> .gitignore
+echo "*.tfvars" >> .gitignore
+echo ".env" >> .gitignore
