@@ -27,7 +27,7 @@ jobs:
       with:
         context: .
         push: true
-        tags: ghcr.io/${{ github.repository }}:latest
+        tags: ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
         
     - name: Deploy to VM
       uses: appleboy/ssh-action@master
@@ -36,10 +36,10 @@ jobs:
         username: ${{ secrets.VM_USERNAME }}
         key: ${{ secrets.VM_SSH_KEY }}
         script: |
-          docker pull ghcr.io/${{ github.repository }}:latest
+          docker pull ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
           docker stop nodejs-app || true
           docker rm nodejs-app || true
           echo "SECRET_MESSAGE=${{ secrets.SECRET_MESSAGE }}" > .env
           echo "AUTH_USERNAME=${{ secrets.AUTH_USERNAME }}" >> .env
           echo "AUTH_PASSWORD=${{ secrets.AUTH_PASSWORD }}" >> .env
-          docker run -d -p 3000:3000 --env-file .env --restart always --name nodejs-app ghcr.io/${{ github.repository }}:latest
+          docker run -d -p 3000:3000 --env-file .env --restart always --name nodejs-app ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
