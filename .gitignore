@@ -6,3 +6,4 @@
 crash.log
 *.tfvars
 .env
+node_modules
