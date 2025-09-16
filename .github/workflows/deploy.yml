@@ -15,13 +15,6 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.CR_PAT }}
-
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
       with:
@@ -45,16 +38,17 @@ jobs:
     # Déploiement sur la VM
     - name: Deploy to VM using gcloud
       run: |
+        # Créer un fichier .env temporaire
         echo "SECRET_MESSAGE=${{ secrets.SECRET_MESSAGE }}" > env_file
         echo "AUTH_USERNAME=${{ secrets.AUTH_USERNAME }}" >> env_file
         echo "AUTH_PASSWORD=${{ secrets.AUTH_PASSWORD }}" >> env_file
 
-        # Copier le .env vers la VM
+        # Copier le fichier .env vers la VM
         gcloud compute scp ./env_file rayanelouzazna13@nodejs-server:~/.env \
           --zone=${{ secrets.VM_ZONE }} \
           --project=${{ secrets.GCP_PROJECT_ID }}
 
-        # Déployer le conteneur (avec sudo)
+        # Installer Docker si nécessaire + déployer le conteneur
         gcloud compute ssh rayanelouzazna13@nodejs-server \
           --zone=${{ secrets.VM_ZONE }} \
           --project=${{ secrets.GCP_PROJECT_ID }} \
@@ -62,11 +56,14 @@ jobs:
             if ! command -v docker &> /dev/null; then
               echo '>>> Installing Docker...'
               sudo apt update && sudo apt install -y docker.io
+              sudo systemctl enable docker
+              sudo systemctl start docker
             fi
 
             echo '>>> Deploying container...'
-            sudo docker pull ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
-            sudo docker stop nodejs-app || true
-            sudo docker rm nodejs-app || true
-            sudo docker run -d -p 3000:3000 --env-file ~/.env --restart always --name nodejs-app ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
+            docker pull ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
+            docker stop nodejs-app || true
+            docker rm nodejs-app || true
+            docker run -d -p 3000:3000 --env-file ~/.env --restart always --name nodejs-app ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
           "
+      shell: /usr/bin/bash -e
