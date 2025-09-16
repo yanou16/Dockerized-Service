@@ -7,7 +7,7 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment: VM_HOST  # Ajoutez cette ligne pour spécifier l'environnement
+    environment: VM_HOST
     
     steps:
     - name: Checkout code
@@ -29,20 +29,31 @@ jobs:
         context: .
         push: true
         tags: ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
-        # Ajouter cette ligne pour définir la visibilité du package
         labels: |
           org.opencontainers.image.source=https://github.com/${{ github.repository }}
-    - name: Deploy to VM
-      uses: appleboy/ssh-action@master
+          
+    # Configuration améliorée pour gcloud
+    - name: Set up gcloud CLI
+      uses: google-github-actions/setup-gcloud@v1
       with:
-        host: ${{ secrets.VM_HOST }}
-        username: ${{ secrets.VM_USERNAME }}
-        key: ${{ secrets.VM_SSH_KEY }}
-        script: |
-          docker pull ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
-          docker stop nodejs-app || true
-          docker rm nodejs-app || true
-          echo "SECRET_MESSAGE=${{ secrets.SECRET_MESSAGE }}" > .env
-          echo "AUTH_USERNAME=${{ secrets.AUTH_USERNAME }}" >> .env
-          echo "AUTH_PASSWORD=${{ secrets.AUTH_PASSWORD }}" >> .env
-          docker run -d -p 3000:3000 --env-file .env --restart always --name nodejs-app ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        export_default_credentials: true
+        
+    - name: Deploy to VM using gcloud
+      run: |
+        # Créer le fichier .env sur la VM via gcloud
+        echo "SECRET_MESSAGE=${{ secrets.SECRET_MESSAGE }}" > env_file
+        echo "AUTH_USERNAME=${{ secrets.AUTH_USERNAME }}" >> env_file
+        echo "AUTH_PASSWORD=${{ secrets.AUTH_PASSWORD }}" >> env_file
+        
+        # Copier le fichier .env sur la VM avec l'option --quiet
+        gcloud compute scp env_file ${{ secrets.VM_NAME }}:~/.env --zone=${{ secrets.VM_ZONE }} --quiet
+        
+        # Exécuter les commandes sur la VM avec l'option --quiet
+        gcloud compute ssh ${{ secrets.VM_NAME }} --zone=${{ secrets.VM_ZONE }} --quiet --command="
+          docker pull ghcr.io/${{ github.repository_owner }}/dockerized-service:latest && \
+          docker stop nodejs-app || true && \
+          docker rm nodejs-app || true && \
+          docker run -d -p 3000:3000 --env-file ~/.env --restart always --name nodejs-app ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
+        "
