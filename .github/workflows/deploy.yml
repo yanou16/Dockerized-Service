@@ -1,54 +1,55 @@
-name: Build and Deploy
+name: Deploy Node.js on VM
 
 on:
   push:
     branches: [ main ]
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      # Authentification GCP
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+    # Authentification GCP
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Set up gcloud CLI
-        uses: google-github-actions/setup-gcloud@v1
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+    - name: Set up gcloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      # Déploiement sur la VM
-      - name: Deploy to VM
-        shell: bash
-        run: |
-          # Créer fichier env
-          echo "SECRET_MESSAGE=${{ secrets.SECRET_MESSAGE }}" > env_file
-          echo "AUTH_USERNAME=${{ secrets.AUTH_USERNAME }}" >> env_file
-          echo "AUTH_PASSWORD=${{ secrets.AUTH_PASSWORD }}" >> env_file
+    - name: Deploy to VM
+      run: |
+        # Créer fichier env
+        echo "SECRET_MESSAGE=${{ secrets.SECRET_MESSAGE }}" > env_file
+        echo "AUTH_USERNAME=${{ secrets.AUTH_USERNAME }}" >> env_file
+        echo "AUTH_PASSWORD=${{ secrets.AUTH_PASSWORD }}" >> env_file
 
-          # Copier le fichier .env vers la VM
-          gcloud compute scp ./env_file rayanelouzazna13@nodejs-server:~/.env \
-            --zone=${{ secrets.VM_ZONE }} \
-            --project=${{ secrets.GCP_PROJECT_ID }}
+        # Copier le code et le fichier env vers la VM
+        gcloud compute scp --recurse ./ rayanelouzazna13@nodejs-server:~/app \
+          --zone=${{ secrets.VM_ZONE }}
 
-          # SSH + installer Docker si pas présent + run conteneur
-          gcloud compute ssh rayanelouzazna13@nodejs-server \
-            --zone=${{ secrets.VM_ZONE }} \
-            --project=${{ secrets.GCP_PROJECT_ID }} \
-            --command="
-              if ! command -v docker &> /dev/null; then
-                sudo apt update && sudo apt install -y docker.io
-                sudo usermod -aG docker \$USER
-                newgrp docker
-              fi
+        gcloud compute ssh rayanelouzazna13@nodejs-server \
+          --zone=${{ secrets.VM_ZONE }} \
+          --command="
+            cd ~/app
 
-              docker stop nodejs-app || true
-              docker rm nodejs-app || true
-              docker run -d -p 3000:3000 --env-file ~/.env --restart always --name nodejs-app ghcr.io/yanou16/dockerized-service:latest
-            "
+            # Installer Docker si nécessaire
+            if ! command -v docker &> /dev/null; then
+              sudo apt update && sudo apt install -y docker.io
+              sudo usermod -aG docker \$USER
+              newgrp docker
+            fi
+
+            # Déployer le conteneur
+            docker build -t nodejs-app:latest .
+            docker stop nodejs-app || true
+            docker rm nodejs-app || true
+            docker run -d -p 3000:3000 --env-file ./env_file --restart always --name nodejs-app nodejs-app:latest
+          "
+      shell: bash
