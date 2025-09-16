@@ -9,15 +9,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Checkout du code
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # 2. Configurer Docker Buildx
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    # 3. Connexion à GitHub Container Registry
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v2
       with:
@@ -25,7 +22,6 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.CR_PAT }}
 
-    # 4. Build et push de l'image Docker
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
       with:
@@ -35,32 +31,30 @@ jobs:
         labels: |
           org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
-    # 5. Authentification GCP
+    # Authentification GCP
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    # 6. Installer gcloud CLI
     - name: Set up gcloud CLI
       uses: google-github-actions/setup-gcloud@v1
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-    # 7. Déploiement sur la VM
+    # Déploiement sur la VM
     - name: Deploy to VM using gcloud
       run: |
-        # Créer un fichier .env temporaire
         echo "SECRET_MESSAGE=${{ secrets.SECRET_MESSAGE }}" > env_file
         echo "AUTH_USERNAME=${{ secrets.AUTH_USERNAME }}" >> env_file
         echo "AUTH_PASSWORD=${{ secrets.AUTH_PASSWORD }}" >> env_file
 
-        # Copier le fichier .env dans la VM
+        # Copier le .env vers la VM
         gcloud compute scp ./env_file rayanelouzazna13@nodejs-server:~/.env \
           --zone=${{ secrets.VM_ZONE }} \
           --project=${{ secrets.GCP_PROJECT_ID }}
 
-        # Installer Docker si nécessaire + déployer le conteneur
+        # Déployer le conteneur (avec sudo)
         gcloud compute ssh rayanelouzazna13@nodejs-server \
           --zone=${{ secrets.VM_ZONE }} \
           --project=${{ secrets.GCP_PROJECT_ID }} \
@@ -68,12 +62,11 @@ jobs:
             if ! command -v docker &> /dev/null; then
               echo '>>> Installing Docker...'
               sudo apt update && sudo apt install -y docker.io
-              sudo usermod -aG docker \$USER
             fi
 
             echo '>>> Deploying container...'
-            docker pull ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
-            docker stop nodejs-app || true
-            docker rm nodejs-app || true
-            docker run -d -p 3000:3000 --env-file ~/.env --restart always --name nodejs-app ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
+            sudo docker pull ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
+            sudo docker stop nodejs-app || true
+            sudo docker rm nodejs-app || true
+            sudo docker run -d -p 3000:3000 --env-file ~/.env --restart always --name nodejs-app ghcr.io/${{ github.repository_owner }}/dockerized-service:latest
           "
