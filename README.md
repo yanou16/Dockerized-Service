@@ -1,6 +1,10 @@
 # Dockerized Node.js Service with CI/CD Pipeline
 
 ## Overview
+<img width="1676" height="853" alt="image" src="https://github.com/user-attachments/assets/a6463047-b28a-43a5-bbfd-703c1795bfd2" />
+https://roadmap.sh/projects/dockerized-service-deployment
+<img width="993" height="448" alt="image" src="https://github.com/user-attachments/assets/9335487d-1ae3-4004-8ca1-996e11d1071f" />
+
 This project demonstrates a complete CI/CD workflow for a Node.js application, containerized with Docker and automatically deployed to a Google Cloud Platform (GCP) virtual machine using GitHub Actions.
 
 ## Project Structure
