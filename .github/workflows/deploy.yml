@@ -44,13 +44,13 @@ jobs:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
     # Déploiement
-       - name: Deploy to VM using gcloud
+    - name: Deploy to VM using gcloud
       run: |
         echo "SECRET_MESSAGE=${{ secrets.SECRET_MESSAGE }}" > env_file
         echo "AUTH_USERNAME=${{ secrets.AUTH_USERNAME }}" >> env_file
         echo "AUTH_PASSWORD=${{ secrets.AUTH_PASSWORD }}" >> env_file
 
-        # Copier .env vers la VM (⚡ CORRECTION ICI)
+        # Copier .env vers la VM
         gcloud compute scp ./env_file ${{ secrets.VM_NAME }}:~/.env \
           --zone=${{ secrets.VM_ZONE }} \
           --project=${{ secrets.GCP_PROJECT_ID }}
