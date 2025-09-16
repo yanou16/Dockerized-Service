@@ -48,10 +48,10 @@ jobs:
         echo "AUTH_PASSWORD=${{ secrets.AUTH_PASSWORD }}" >> env_file
         
         # Copier le fichier .env sur la VM avec l'option --quiet
-        gcloud compute scp env_file ${{ secrets.VM_NAME }}:~/.env --zone=${{ secrets.VM_ZONE }} --quiet
+        gcloud compute scp --quiet --zone=${{ secrets.VM_ZONE }} env_file ${{ secrets.VM_NAME }}:~/.env
         
         # Exécuter les commandes sur la VM avec l'option --quiet
-        gcloud compute ssh ${{ secrets.VM_NAME }} --zone=${{ secrets.VM_ZONE }} --quiet --command="
+        gcloud compute ssh --quiet --zone=${{ secrets.VM_ZONE }} ${{ secrets.VM_NAME }} --command="
           docker pull ghcr.io/${{ github.repository_owner }}/dockerized-service:latest && \
           docker stop nodejs-app || true && \
           docker rm nodejs-app || true && \
